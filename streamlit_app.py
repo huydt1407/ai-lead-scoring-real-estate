@@ -172,13 +172,35 @@ if df is not None:
     col3.metric("Leads Thường (0)", normal_count)
     col4.metric("Leads Rác (-50)", junk_count, delta_color="inverse")
     
-    # 2. Bộ lọc tìm kiếm
-    st.markdown("### 🔍 Bộ lọc danh sách")
-    f_col1, f_col2 = st.columns(2)
+    # 2. Trực quan hóa dữ liệu bằng Biểu đồ (Charts)
+    st.markdown("### 📊 Trực quan hóa Dữ liệu")
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        cat_counts = pd.Series({"VIP (+50)": vip_count, "Thường (0)": normal_count, "Rác (-50)": junk_count})
+        st.bar_chart(cat_counts, color="#38bdf8")
+        st.caption("Số lượng khách hàng theo Phân loại kiểm duyệt")
+        
+    with chart_col2:
+        status_counts = df["Trạng thái duyệt"].value_counts()
+        st.bar_chart(status_counts, color="#34d399")
+        st.caption("Trạng thái xử lý hệ thống (AI Evaluated vs Human Approved)")
+
+    # 3. Bộ lọc tìm kiếm nâng cao
+    st.markdown("### 🔍 Bộ lọc danh sách nâng cao")
+    f_col1, f_col2, f_col3, f_col4 = st.columns(4)
     search_q = f_col1.text_input("Tìm kiếm theo tên, SĐT hoặc mô tả nhu cầu:")
     category_filter = f_col2.selectbox(
         "Lọc nhóm khách hàng (Kiểm duyệt):",
         ["Tất cả", "VIP", "Normal", "Junk"]
+    )
+    status_filter = f_col3.selectbox(
+        "Lọc theo trạng thái duyệt:",
+        ["Tất cả", "AI Evaluated (Chờ duyệt)", "Human Approved (Đã duyệt)"]
+    )
+    phone_filter = f_col4.selectbox(
+        "Lọc theo thông tin liên hệ:",
+        ["Tất cả", "Có số điện thoại", "Không có số điện thoại"]
     )
     
     # Áp dụng bộ lọc
@@ -194,6 +216,17 @@ if df is not None:
         
     if category_filter != "Tất cả":
         filtered_df = filtered_df[filtered_df["Phân loại kiểm duyệt"] == category_filter]
+        
+    if status_filter != "Tất cả":
+        if "AI Evaluated" in status_filter:
+            filtered_df = filtered_df[filtered_df["Trạng thái duyệt"] == "AI Evaluated"]
+        else:
+            filtered_df = filtered_df[filtered_df["Trạng thái duyệt"] == "Human Approved"]
+            
+    if phone_filter == "Có số điện thoại":
+        filtered_df = filtered_df[filtered_df["sdt"].notna() & (filtered_df["sdt"].astype(str).str.strip() != "")]
+    elif phone_filter == "Không có số điện thoại":
+        filtered_df = filtered_df[filtered_df["sdt"].isna() | (filtered_df["sdt"].astype(str).str.strip() == "")]
         
     st.markdown("### ✏️ Bảng danh sách & Kiểm duyệt trực tiếp (Human-in-the-loop)")
     st.info("💡 Bạn có thể nhấp đúp trực tiếp vào ô trong các cột 'Điểm số kiểm duyệt', 'Phân loại kiểm duyệt', hoặc 'Ghi chú duyệt' để chỉnh sửa kết quả, sau đó tải về file Excel đã cập nhật.")
