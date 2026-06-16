@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Lead Scoring & Automation System</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- SheetJS CDN for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Section -->
+        <header>
+            <div class="brand">
+                <div class="brand-icon">⚡</div>
+                <div class="brand-title">
+                    <h1>AI Lead Scoring Dashboard</h1>
+                    <p>Hệ thống Đánh giá & Chuyển đổi Khách hàng Tiềm năng Bất động sản</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-success" id="export-excel-btn" disabled>
+                    📥 Xuất Excel bàn giao
+                </button>
+            </div>
+        </header>
+
+        <!-- Setup & Integration Config Panel -->
+        <section class="panel config-grid">
+            <div class="form-group">
+                <label for="sheet-url">Đường dẫn Google Sheets Dữ liệu</label>
+                <input type="text" id="sheet-url" class="input-control" placeholder="https://docs.google.com/spreadsheets/d/...">
+            </div>
+            <div class="form-group">
+                <label for="scorer-engine">Động cơ chấm điểm</label>
+                <select id="scorer-engine" class="input-control">
+                    <option value="regex" selected>Quy tắc nội bộ (Regex/Keywords - Tốc độ cao)</option>
+                    <option value="ai">Động cơ Trí tuệ nhân tạo (Gemini API)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="api-key">Gemini API Key (Không bắt buộc với Regex)</label>
+                <input type="password" id="api-key" class="input-control" placeholder="AIzaSy...">
+            </div>
+            <div class="form-group" style="flex-direction: row; gap: 0.5rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" id="load-data-btn">🔄 Tải Dữ liệu</button>
+                <button class="btn btn-primary" id="run-scoring-btn" disabled>⚡ Chạy Đánh giá</button>
+            </div>
+        </section>
+
+        <!-- Metrics Dashboard -->
+        <section class="metrics-grid">
+            <div class="panel metric-card">
+                <div class="metric-label">Tổng khách hàng</div>
+                <div class="metric-value" id="total-leads">0</div>
+                <div class="metric-sub">Được load từ Google Sheets</div>
+            </div>
+            <div class="panel metric-card vip">
+                <div class="metric-label">Khách hàng VIP (+50)</div>
+                <div class="metric-value" id="vip-leads">0</div>
+                <div class="metric-sub">Tiềm năng chuyển đổi cao nhất</div>
+            </div>
+            <div class="panel metric-card normal">
+                <div class="metric-label">Khách hàng Thường (0)</div>
+                <div class="metric-value" id="normal-leads">0</div>
+                <div class="metric-sub">Nhu cầu cơ bản trung cấp</div>
+            </div>
+            <div class="panel metric-card junk">
+                <div class="metric-label">Khách hàng Rác (-50)</div>
+                <div class="metric-value" id="junk-leads">0</div>
+                <div class="metric-sub">Không có nhu cầu / sai thông tin</div>
+            </div>
+            <div class="panel metric-card reviewed">
+                <div class="metric-label">Đã kiểm duyệt</div>
+                <div class="metric-value" id="reviewed-leads">0</div>
+                <div class="metric-sub">Nhân viên phê duyệt (HIL)</div>
+            </div>
+        </section>
+
+        <!-- Filtering & Search Tools -->
+        <section class="panel table-controls">
+            <div class="search-filter-box">
+                <input type="text" id="search-input" class="input-control search-input" placeholder="Tìm kiếm tên, SĐT hoặc nội dung nhu cầu...">
+                <select id="category-filter" class="input-control">
+                    <option value="all">Tất cả phân loại</option>
+                    <option value="VIP">Nhóm VIP (+50)</option>
+                    <option value="Normal">Nhóm Thường (0)</option>
+                    <option value="Junk">Nhóm Rác (-50)</option>
+                </select>
+                <select id="status-filter" class="input-control">
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="pending">Chờ duyệt</option>
+                    <option value="approved">Đã duyệt</option>
+                </select>
+            </div>
+        </section>
+
+        <!-- Main Leads Grid Table -->
+        <section class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%">Mã</th>
+                        <th style="width: 15%">Tên khách</th>
+                        <th style="width: 10%">Số ĐT</th>
+                        <th style="width: 25%">Mô tả nhu cầu</th>
+                        <th style="width: 15%">Phân loại cuối</th>
+                        <th style="width: 20%">Lý do chấm điểm</th>
+                        <th style="width: 10%">Trạng thái</th>
+                        <th style="width: 5%">Duyệt</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-dim); padding: 4rem;">
+                            Chưa có dữ liệu. Vui lòng nhập đường dẫn Google Sheets ở trên và nhấn "Tải Dữ liệu".
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Pagination Bar -->
+        <footer class="pagination">
+            <div class="pagination-info">
+                Hiển thị <span id="pagination-info">0 - 0 trong 0</span> khách hàng
+            </div>
+            <div class="page-controls">
+                <button class="page-btn" id="prev-page" disabled>&lt;</button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn" id="next-page" disabled>&gt;</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Human-in-the-loop Edit Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">✏️ Kiểm duyệt & Phê duyệt khách hàng</h3>
+                <button class="close-btn" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Lead details card -->
+                <div class="lead-detail-box">
+                    <div class="detail-row">
+                        <span class="detail-label">Mã khách hàng:</span>
+                        <span class="detail-value" id="detail-id">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Tên khách hàng:</span>
+                        <span class="detail-value" id="detail-name">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Số điện thoại:</span>
+                        <span class="detail-value" id="detail-phone">—</span>
+                    </div>
+                    <div class="detail-row" style="flex-direction: column; gap: 0.25rem;">
+                        <span class="detail-label">Nội dung nhu cầu:</span>
+                        <span class="detail-value" id="detail-desc" style="background: rgba(255,255,255,0.03); padding: 0.5rem; border-radius: 6px; margin-top: 0.25rem; font-style: italic;">—</span>
+                    </div>
+                </div>
+
+                <!-- AI Scoring breakdown -->
+                <div class="form-group">
+                    <label>Kết quả đánh giá tự động (AI/Regex)</label>
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.25rem;">
+                        <span class="badge badge-normal" id="detail-ai-score">Normal (0 điểm)</span>
+                        <span id="detail-ai-reason" style="font-size: 0.85rem; color: var(--text-muted);">—</span>
+                    </div>
+                </div>
+
+                <!-- Score Override Section -->
+                <div class="form-group">
+                    <label>Ghi đè Phân loại (Human Override)</label>
+                    <div class="override-grid">
+                        <div class="override-option">
+                            <input type="radio" id="override-vip" name="override-score" value="50">
+                            <label for="override-vip" class="override-label vip">
+                                <span>+50 Điểm</span>
+                                <span>VIP</span>
+                            </label>
+                        </div>
+                        <div class="override-option">
+                            <input type="radio" id="override-normal" name="override-score" value="0">
+                            <label for="override-normal" class="override-label normal">
+                                <span>0 Điểm</span>
+                                <span>Thường</span>
+                            </label>
+                        </div>
+                        <div class="override-option">
+                            <input type="radio" id="override-junk" name="override-score" value="-50">
+                            <label for="override-junk" class="override-label junk">
+                                <span>-50 Điểm</span>
+                                <span>Rác</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Staff Remarks / Notes -->
+                <div class="form-group">
+                    <label for="override-reason">Ghi chú phê duyệt / Tên nhân viên kiểm tra</label>
+                    <input type="text" id="override-reason" class="input-control" placeholder="Nhập tên người duyệt hoặc ghi chú điều chỉnh...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-edit-btn">Đóng</button>
+                <button class="btn btn-success" id="save-edit-btn">✅ Duyệt & Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
