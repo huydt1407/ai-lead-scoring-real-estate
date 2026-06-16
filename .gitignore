@@ -1,0 +1,7 @@
+.streamlit/secrets.toml
+.streamlit/
+__pycache__/
+*.xlsx
+temp_leads.csv
+sheets-sync-project-498915-601429d043fd.json
+sheets-sync-project-498915-601429d043fd.toml

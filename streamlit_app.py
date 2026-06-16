@@ -3,6 +3,7 @@ import re
 import pandas as pd
 import requests
 import streamlit as st
+from streamlit_gsheets import GSheetsConnection
 
 # Cấu hình giao diện Streamlit
 st.set_page_config(
@@ -114,12 +115,9 @@ if "df_leads" not in st.session_state:
 if load_btn:
     with st.spinner("Đang tải dữ liệu từ Google Sheets và chạy chấm điểm tự động..."):
         try:
-            response = requests.get(export_url)
-            response.raise_for_status()
-            
-            # Đọc CSV sang DataFrame
-            csv_data = response.content.decode('utf-8')
-            df = pd.read_csv(io.StringIO(csv_data))
+            # Kết nối bảo mật sử dụng st-gsheets-connection
+            conn = st.connection("gsheets", type=GSheetsConnection)
+            df = conn.read(spreadsheet=sheet_url, ttl="10m")
             
             # Kiểm tra định dạng cột
             required_cols = ["id", "ten_khach", "sdt", "nhu_cau_mo_ta"]
