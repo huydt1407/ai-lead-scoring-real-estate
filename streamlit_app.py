@@ -1,5 +1,6 @@
 import io
 import re
+import os
 import pandas as pd
 import requests
 import streamlit as st
@@ -84,11 +85,38 @@ def score_lead(description):
 # -------------------------------------------------------------
 # GIAO DIỆN CHÍNH (STREAMLIT APP)
 # -------------------------------------------------------------
-st.title("⚡ AI Lead Scoring & Automation System")
-st.markdown("Hệ thống Đánh giá & Phân loại Khách hàng Tiềm năng Bất động sản (Human-in-the-loop)")
+# Tiêm CSS tùy chỉnh cho ứng dụng
+st.markdown("""
+<style>
+.stMetric {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+div[data-testid="metric-container"] {
+    text-align: center;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Hiển thị Logo & Banner trên đầu trang chủ
+col_logo, col_title = st.columns([1, 5])
+with col_logo:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=120)
+with col_title:
+    st.title("⚡ AI Lead Scoring & Automation System")
+    st.markdown("Hệ thống Đánh giá & Phân loại Khách hàng Tiềm năng Bất động sản (Human-in-the-loop)")
+
+st.divider()
 
 # Sidebar Cấu hình
 st.sidebar.header("⚙️ Cấu hình Tích hợp")
+if os.path.exists("logo.png"):
+    st.sidebar.image("logo.png", use_container_width=True)
+st.sidebar.markdown("---")
 sheet_url = st.sidebar.text_input(
     "Đường dẫn Google Sheets (CSV Export):",
     "https://docs.google.com/spreadsheets/d/16tCAf_qqtgYZxoumYQKMEOdBhKE0wg5A/edit?gid=1542775777#gid=1542775777"
@@ -164,11 +192,11 @@ if df is not None:
     normal_count = (df["Phan_loai_AI"] if "Phân loại kiểm duyệt" not in df.columns else df["Phân loại kiểm duyệt"]).value_counts().get("Normal", 0)
     junk_count = (df["Phan_loai_AI"] if "Phân loại kiểm duyệt" not in df.columns else df["Phân loại kiểm duyệt"]).value_counts().get("Junk", 0)
     
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Tổng Leads", total_leads)
-    col2.metric("Leads VIP (+50)", vip_count, delta_color="normal")
-    col3.metric("Leads Thường (0)", normal_count)
-    col4.metric("Leads Rác (-50)", junk_count, delta_color="inverse")
+    # Dùng st.columns(3) kết hợp st.metric để hiển thị: Tổng khách hàng, Khách VIP, Khách Rác
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🏠 Tổng khách hàng BĐS", total_leads)
+    col2.metric("🏆 Khách VIP (+50đ)", vip_count)
+    col3.metric("🗑️ Khách Rác (-50đ)", junk_count)
     
     # 2. Trực quan hóa dữ liệu bằng Biểu đồ (Charts)
     st.markdown("### 📊 Trực quan hóa Dữ liệu")
@@ -321,3 +349,44 @@ else:
         - **Nhóm Rác (-50 điểm):** Yêu cầu phi thực tế (Q1 nhà 1 tỷ, thuê nhà 2 triệu trung tâm), nhầm số, hỏi giá cho vui, bảo hiểm/vay vốn spam, số thuê bao không liên lạc được.
         - **Nhóm Thường (0 điểm):** Chung cư, nhà phố tầm trung (3-10 tỷ), cần tư vấn thêm, cần vay ngân hàng.
         """)
+
+# -------------------------------------------------------------
+# BẢNG TỔNG KẾT KIỂM TRA (AUDIT) - LUÔN HIỂN THỊ DƯỚI CÙNG
+# -------------------------------------------------------------
+st.divider()
+st.markdown("### 📋 Bảng Tổng kết Kiểm tra (Audit)")
+st.caption("Bảng tự đánh giá thành phần kỹ năng hệ thống (Audit Checklist)")
+
+audit_data = {
+    "Thành tố": [
+        "1. Input", 
+        "2. Agent", 
+        "3. Tools", 
+        "4. Knowledge", 
+        "5. Memory", 
+        "6. Workflow", 
+        "7. Output"
+    ],
+    "Tên File/Công cụ": [
+        "Google Sheets", 
+        "Logic chấm điểm", 
+        "Streamlit, Pandas, GitHub", 
+        "tieu_chi_cham_diem.txt", 
+        "st.session_state", 
+        "AI ➔ Người duyệt ➔ Excel", 
+        "File Excel Bàn Giao"
+    ],
+    "Mô tả": [
+        "500 khách hàng BĐS 🏠 / Spa 💄", 
+        "Tự động quét mô tả nhu cầu", 
+        "Nền tảng xây dựng hệ thống", 
+        "Quy tắc cộng 50đ / trừ 50đ", 
+        "Ghi nhớ trạng thái phiên làm việc", 
+        "Human Checkpoint (Kiểm duyệt)", 
+        "Dữ liệu sạch cho bộ phận Sales"
+    ]
+}
+df_audit = pd.DataFrame(audit_data)
+st.table(df_audit)
+
+st.success("✅ Hoàn thành đủ 7 thành tố = Vượt qua Buổi 7!")
